@@ -1,31 +1,45 @@
-import React, { useState } from 'react'
+import React, { useRef, useState, useEffect } from 'react'
+import socket from '../socket'
 import '../index.css'
 
-const Chat = () => {
+const Chat = ({ users, messages, userName, roomId, onAddMessage }) => {
   const [messageValue, setMessageValue] = useState('')
+
+  const messagesRef = useRef(null)
+
+  const onSendMessage = () => {
+    socket.emit('ROOM: NEW_MESSAGE', { roomId, userName, text: messageValue })
+    onAddMessage({ userName, text: messageValue })
+    setMessageValue('')
+  }
+
+  useEffect(() => {
+    messagesRef.current.scrollTo(0, 99999)
+  }, [messages])
+
   return (
     <>
       <div className="chat">
         <div className="chat-users">
-          <b>User (1)</b>
+          Комната: <b>{roomId}</b>
+          <hr />
+          <b>Online ({users.length}):</b>
           <ul>
-            <li>Test User</li>
+            {users.map((user, index) => (
+              <li key={user + index}>{user}</li>
+            ))}
           </ul>
         </div>
         <div className="chat-messages">
-          <div className="messages">
-            <div className="message">
-              <p>lorem ipsum</p>
-              <div>
-                <span>Test User</span>
+          <div ref={messagesRef} className="messages">
+            {messages.map((message, index) => (
+              <div className="message" key={index}>
+                <p>{message.text}</p>
+                <div>
+                  <span>{message.userName}</span>
+                </div>
               </div>
-            </div>
-            <div className="message">
-              <p>lorem ipsum</p>
-              <div>
-                <span>Test User</span>
-              </div>
-            </div>
+            ))}
           </div>
           <form>
             <textarea
@@ -34,7 +48,13 @@ const Chat = () => {
               className="form-control"
               rows="3"
             ></textarea>
-            <button className="btn btn-primary">Send</button>
+            <button
+              onClick={onSendMessage}
+              type="button"
+              className="btn btn-primary"
+            >
+              Send
+            </button>
           </form>
         </div>
       </div>

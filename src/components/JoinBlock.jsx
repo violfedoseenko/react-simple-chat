@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
 import axios from 'axios'
-import socket from '../socket'
 
 const JoinBlock = ({ onLogin }) => {
   const [roomId, setRoomId] = useState('')

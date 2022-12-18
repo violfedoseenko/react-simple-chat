@@ -1,6 +1,6 @@
 const express = require('express') //подключение библиотеки, благодаря кторой мы сможем подключать серверную часть
 
-const app = express() // в этолй переменной хранится серверное приложение
+const app = express() // в этой переменной хранится серверное приложение
 
 const server = require('http').Server(app) // создание сервера. сервер будет работать через приложение app
 const io = require('socket.io')(server) // подключение сокетов к серверу
@@ -9,9 +9,16 @@ app.use(express.json()) //приложение может принимать з�
 
 const rooms = new Map() //{ rooms: [], messages: ['hello'] }
 
-app.get('/rooms', (req, res) => {
+app.get('/rooms/:id', (req, res) => {
   // rooms.set('hello', '') // добавление элемента в мэп - ключ и значение
-  res.json(rooms)
+  const { id: roomId } = req.params
+  const obj = rooms.has(roomId)
+    ? {
+        users: [...rooms.get(roomId).get('users').values()],
+        messages: [...rooms.get(roomId).get('messages').values()],
+      }
+    : { users: [], messages: [] }
+  res.json(obj)
 })
 
 app.post('/rooms', (req, res) => {
@@ -41,8 +48,25 @@ io.on('connection', (socket) => {
     // получаем имена пользователей
     const users = [...rooms.get(roomId).get('users').values()]
     // в определенной комнате все кроме меня получат сокет со списком подключенных к комнате пользователей
-    socket.broadcast.to(roomId).emit('ROOM: JOINED', users)
-    console.log('user connected', socket.id)
+    socket.broadcast.to(roomId).emit('ROOM: SET_USERS', users)
+  })
+
+  socket.on('ROOM: NEW_MESSAGE', ({ roomId, userName, text }) => {
+    const obj = { userName, text }
+
+    rooms.get(roomId).get('messages').push(obj)
+    socket.broadcast.to(roomId).emit('ROOM: NEW_MESSAGE', obj)
+  })
+
+  socket.on('disconnect', () => {
+    // в value попадает Map([['users', new Map()],['messages', []]])
+    rooms.forEach((value, roomId) => {
+      //  возвращается булево
+      if (value.get('users').delete(socket.id)) {
+        const users = [...value.get('users').values()]
+        socket.broadcast.to(roomId).emit('ROOM: SET_USERS', users)
+      }
+    })
   })
 })
 
